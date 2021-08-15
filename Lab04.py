@@ -6,7 +6,10 @@
 # proposito de parecerse lo mas posible a una libreria y no un programa
 # -----------------------------------------------------------------------
 
+from vecTools import VecTools
 import struct
+from collections import namedtuple
+vt = VecTools()
 
 def char(c): # 1 bit
   return struct.pack('=c', c.encode('ascii'))
@@ -20,7 +23,9 @@ def dword(dw): # 4 bits
 def color(b, g, r): # generador de colores
   return bytes([b, g, r])
 
-bk = color(0, 0, 0)	
+bk = color(0, 0, 0)
+V2 = namedtuple('Point2', ['x', 'y'])
+V3 = namedtuple('Point3', ['x', 'y', 'z'])
 
 class renderer():
 	def __init__(self):
@@ -381,6 +386,86 @@ class renderer():
 				elif prefix == 'f':
 					self.faces.append([list(map(int , face.split('/'))) for face in value.split(' ')])
 	
+	def triangle(self, A, B, C, color=None):
+		bbox_min, bbox_max = vt.bbox(A, B, C)
+
+		for x in range(bbox_min.x, bbox_max.x + 1):
+			for y in range(bbox_min.y, bbox_max.y + 1):
+				w, v, u = vt.barycentric(A, B, C, V2(x, y))
+				if w < 0 or v < 0 or u < 0:  # 0 is actually a valid value! (it is on the edge)
+					continue
+			
+			self.vertex(x, y)
+
+	def transform(self, vertex, translate=(0, 0, 0), scale=(1, 1, 1)):
+		# returns a vertex 3, translated and transformed
+		return V3(
+		round((vertex[0] + translate[0]) * scale[0]),
+		round((vertex[1] + translate[1]) * scale[1]),
+		round((vertex[2] + translate[2]) * scale[2])
+		)
+
+	def load_dennis(self, filename, translate=(0, 0, 0), scale=(1, 1, 1)):
+		"""
+		Loads an obj file in the screen
+		wireframe only
+		Input: 
+		filename: the full path of the obj file
+		translate: (translateX, translateY) how much the model will be translated during render
+		scale: (scaleX, scaleY) how much the model should be scaled
+		"""
+		self.obj(filename)
+
+		light = V3(0,0,1)
+
+		for face in self.faces:
+			vcount = len(face)
+
+			if vcount == 3:
+				f1 = face[0][0] - 1
+				f2 = face[1][0] - 1
+				f3 = face[2][0] - 1
+
+				a = self.transform(self.vertices[f1], translate, scale)
+				b = self.transform(self.vertices[f2], translate, scale)
+				c = self.transform(self.vertices[f3], translate, scale)
+
+				normal = vt.normal(vt.cross(vt.sub(b, a), vt.sub(c, a)))
+				intensity = vt.dot(normal, light)
+				grey = round(255 * intensity)
+				if grey < 0:
+					continue  
+			
+				self.triangle(a, b, c, color(grey, grey, grey))
+			else:
+				# assuming 4
+				f1 = face[0][0] - 1
+				f2 = face[1][0] - 1
+				f3 = face[2][0] - 1
+				f4 = face[3][0] - 1   
+
+			vertices = [
+				self.transform(self.vertices[f1], translate, scale),
+				self.transform(self.vertices[f2], translate, scale),
+				self.transform(self.vertices[f3], translate, scale),
+				self.transform(self.vertices[f4], translate, scale)
+			]
+
+			normal = vt.normal(vt.cross(vt.sub(vertices[0], vertices[1]), vt.sub(vertices[1], vertices[2])))  # no necesitamos dos normales!!
+			intensity = vt.dot(normal, light)
+			grey = round(255 * intensity)
+			if grey < 0:
+				continue # dont paint this face
+
+			# vertices are ordered, no need to sort!
+			# vertices.sort(key=lambda v: v.x + v.y)
+	
+			A, B, C, D = vertices 
+			
+			self.triangle(A, B, C, color(grey, grey, grey))
+			self.triangle(A, C, D, color(grey, grey, grey))
+
+
 	def load(self, filename, translate, scale):
 		self.obj(filename)
 		
@@ -409,7 +494,7 @@ class renderer():
 		self.frBff = self.glClear() # Pinta el bg de un color
 		self.frBff = self.glClearColor(0,0,1) # Modifica color de bg
 		self.glColor(0,0,0)
-		self.load("Bowl.obj", [51,25], [5, 5])
+		self.load_dennis("face.obj", [25,25,25], [5,5,5])
 
 		"""
 		if polygon == "polygonOne":
