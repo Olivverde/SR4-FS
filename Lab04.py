@@ -506,7 +506,7 @@ class renderer():
 		self.frBff = self.glClear() # Pinta el bg de un color
 		self.frBff = self.glClearColor(0, 0, 0) # Modifica color de bg
 		self.glColor(0,0,0)
-		self.load_dennis("bowl.obj",[25,25,25],[5,5,5])
+		self.load_dennis("objs/Bowl.obj",[25,25,25],[5,5,5])
 
 		"""
 		if polygon == "polygonOne":
