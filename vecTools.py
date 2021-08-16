@@ -68,23 +68,17 @@ class VecTools():
         return V2(xs[0], ys[0]), V2(xs[-1], ys[-1])
 
     def barycentric(self, A, B, C, P): # ?????????
-        """
-            Input: 3 size 2 vectors and a point
-            Output: 3 barycentric coordinates of the point in relation to the triangle formed
-                    * returns -1, -1, -1 for degenerate triangles
-        """  
-        cx, cy, cz = self.cross(
-            V3(B.x - A.x, C.x - A.x, A.x - P.x), 
-            V3(B.y - A.y, C.y - A.y, A.y - P.y)
+     
+        bary = self.cross(
+        V3(C.x - A.x, B.x - A.x, A.x - P.x), 
+        V3(C.y - A.y, B.y - A.y, A.y - P.y)
         )
 
-        if abs(cz) < 1:
+        if abs(bary[2]) < 1:
             return -1, -1, -1   # this triangle is degenerate, return anything outside
 
-        # [cx cy cz] = [u v 1]
-
-        u = cx/cz
-        v = cy/cz
-        w = 1 - (u + v)
-
-        return w, v, u
+        return (
+            1 - (bary[0] + bary[1]) / bary[2], 
+            bary[1] / bary[2], 
+            bary[0] / bary[2]
+        )

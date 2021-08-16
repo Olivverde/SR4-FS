@@ -7,8 +7,10 @@
 # -----------------------------------------------------------------------
 
 from vecTools import VecTools
-import struct
 from collections import namedtuple
+import struct
+import numpy
+
 vt = VecTools()
 
 def char(c): # 1 bit
@@ -31,7 +33,9 @@ class renderer():
 	def __init__(self):
 		self.currentColor = bk
 		self.frBff = []
+		self.zbuffer = []
 		self.glInit()
+		
 		
 	def glCreatorWindow(self, width, height): # Crea la ventana, ancho x alto
 		fb = [
@@ -55,6 +59,12 @@ class renderer():
 		[color(0,0,255) for x in range(len(self.frBff))]
 		for y in range(len(self.frBff[0]))
 		]
+
+		self.zbuffer = [
+		[-float('inf') for x in range(self.width)]
+		for y in range(self.height)
+		]
+
 		return self.frBff
 
 	def glClearColor(self, r, g, b): # Personaliza el color del framebuffer
@@ -65,9 +75,9 @@ class renderer():
 		]
 		return self.frBff
 
-	def vertex(self,x,y): # Ubica un punto dentro del viewPort
+	def vertex(self,x,y, color = None): # Ubica un punto dentro del viewPort
 		try:
-			self.frBff[x][y] = self.currentColor
+			self.frBff[x][y] = color or self.currentColor
 		except:
 			pass
  
@@ -394,8 +404,10 @@ class renderer():
 				w, v, u = vt.barycentric(A, B, C, V2(x, y))
 				if w < 0 or v < 0 or u < 0:  # 0 is actually a valid value! (it is on the edge)
 					continue
-			
-			self.vertex(x, y)
+				z = A.z * w + B.z * v + C.z * u
+				if z > self.zbuffer[x][y]:
+					self.vertex(x, y, color)
+					self.zbuffer[x][y] = z
 
 	def transform(self, vertex, translate=(0, 0, 0), scale=(1, 1, 1)):
 		# returns a vertex 3, translated and transformed
@@ -444,26 +456,26 @@ class renderer():
 				f3 = face[2][0] - 1
 				f4 = face[3][0] - 1   
 
-			vertices = [
-				self.transform(self.vertices[f1], translate, scale),
-				self.transform(self.vertices[f2], translate, scale),
-				self.transform(self.vertices[f3], translate, scale),
-				self.transform(self.vertices[f4], translate, scale)
-			]
+				vertices = [
+					self.transform(self.vertices[f1], translate, scale),
+					self.transform(self.vertices[f2], translate, scale),
+					self.transform(self.vertices[f3], translate, scale),
+					self.transform(self.vertices[f4], translate, scale)
+				]
 
-			normal = vt.normal(vt.cross(vt.sub(vertices[0], vertices[1]), vt.sub(vertices[1], vertices[2])))  # no necesitamos dos normales!!
-			intensity = vt.dot(normal, light)
-			grey = round(255 * intensity)
-			if grey < 0:
-				continue # dont paint this face
+				normal = vt.normal(vt.cross(vt.sub(vertices[0], vertices[1]), vt.sub(vertices[1], vertices[2])))  # no necesitamos dos normales!!
+				intensity = vt.dot(normal, light)
+				grey = round(255 * intensity)
+				if grey < 0:
+					continue # dont paint this face
 
 			# vertices are ordered, no need to sort!
 			# vertices.sort(key=lambda v: v.x + v.y)
 	
-			A, B, C, D = vertices 
-			
-			self.triangle(A, B, C, color(grey, grey, grey))
-			self.triangle(A, C, D, color(grey, grey, grey))
+				A, B, C, D = vertices 
+				
+				self.triangle(A, B, C, color(grey, grey, grey))
+				self.triangle(A, C, D, color(grey, grey, grey))
 
 
 	def load(self, filename, translate, scale):
@@ -492,9 +504,9 @@ class renderer():
 		self.height =  1024
 		self.frBff = self.glCreatorWindow(self.width, self.height) # Framebuffer
 		self.frBff = self.glClear() # Pinta el bg de un color
-		self.frBff = self.glClearColor(0,0,1) # Modifica color de bg
+		self.frBff = self.glClearColor(0, 0, 0) # Modifica color de bg
 		self.glColor(0,0,0)
-		self.load_dennis("face.obj", [25,25,25], [5,5,5])
+		self.load_dennis("bowl.obj",[25,25,25],[5,5,5])
 
 		"""
 		if polygon == "polygonOne":
