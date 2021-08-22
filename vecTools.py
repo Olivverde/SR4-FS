@@ -55,30 +55,41 @@ class VecTools():
         
         return V3(xLen, yLen, zLen)
 
-    def bbox(self, *vertices): # ?????????
-        """
-            Input: n size 2 vectors
-            Output: 2 size 2 vectors defining the smallest bounding rectangle possible
-        """  
-        xs = [ vertex.x for vertex in vertices ]
-        ys = [ vertex.y for vertex in vertices ]
-        xs.sort()
-        ys.sort()
+    def minBox(self, *vertices): # Identifica el area minima de encerrado
+        vx = []
+        vy = []
+        for v in vertices:
+            vx.append(v.x)
+            vy.append(v.y)
+        vx.sort()
+        vy.sort()
+        V1 = V2(vx[0], vy[0])
+        V12 = V2(vx[-1], vy[-1])
 
-        return V2(xs[0], ys[0]), V2(xs[-1], ys[-1])
+        return V1, V12
 
-    def barycentric(self, A, B, C, P): # ?????????
-     
-        bary = self.cross(
-        V3(C.x - A.x, B.x - A.x, A.x - P.x), 
-        V3(C.y - A.y, B.y - A.y, A.y - P.y)
-        )
+    def barycentric(self, A, B, C, P): # Coordenadas baricentricas
+        # X
+        CAx = C.x - A.x
+        BAx = B.x - A.x
+        APx = A.x - P.x
+        # Y
+        CAy = C.y - A.y
+        BAy = B.y - A.y
+        APy = A.y - P.y
 
-        if abs(bary[2]) < 1:
-            return -1, -1, -1   # this triangle is degenerate, return anything outside
+        v1 = V3(CAx, BAx, APx)
+        v2 = V3(CAy, BAy, APy)
+        bar = self.cross(v1, v2)
 
+        x = bar[0]
+        y = bar[1]
+        z = bar[2]
+        if abs(z) < 1:
+            return -1, -1, -1  
+        
         return (
-            1 - (bary[0] + bary[1]) / bary[2], 
-            bary[1] / bary[2], 
-            bary[0] / bary[2]
+            1 - (x + y) / z, 
+            y / z, 
+            x / z
         )

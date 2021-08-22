@@ -35,8 +35,7 @@ class renderer():
 		self.frBff = []
 		self.zbuffer = []
 		self.glInit()
-		
-		
+				
 	def glCreatorWindow(self, width, height): # Crea la ventana, ancho x alto
 		fb = [
 			[0 for x in range(width)] # Inicializa el framebuffer con ceros
@@ -396,74 +395,70 @@ class renderer():
 				elif prefix == 'f':
 					self.faces.append([list(map(int , face.split('/'))) for face in value.split(' ')])
 	
-	def triangle(self, A, B, C, color=None):
-		bbox_min, bbox_max = vt.bbox(A, B, C)
+	def triangle(self, A, B, C, color=None): # Triangulo
+		minB, maxB = vt.minBox(A, B, C)
 
-		for x in range(bbox_min.x, bbox_max.x + 1):
-			for y in range(bbox_min.y, bbox_max.y + 1):
+		for x in range(minB.x, maxB.x + 1):
+			for y in range(minB.y, maxB.y + 1):
 				w, v, u = vt.barycentric(A, B, C, V2(x, y))
-				if w < 0 or v < 0 or u < 0:  # 0 is actually a valid value! (it is on the edge)
+				if w < 0 or v < 0 or u < 0:  
 					continue
 				z = A.z * w + B.z * v + C.z * u
 				if z > self.zbuffer[x][y]:
 					self.vertex(x, y, color)
 					self.zbuffer[x][y] = z
 
-	def transform(self, vertex, translate=(0, 0, 0), scale=(1, 1, 1)):
-		# returns a vertex 3, translated and transformed
+	def tranScale(self, vertex, translate=(0, 0, 0), scale=(1, 1, 1)): # Translate and Scale 
+	
 		return V3(
 		round((vertex[0] + translate[0]) * scale[0]),
 		round((vertex[1] + translate[1]) * scale[1]),
 		round((vertex[2] + translate[2]) * scale[2])
 		)
 
-	def load_dennis(self, filename, translate=(0, 0, 0), scale=(1, 1, 1)):
-		"""
-		Loads an obj file in the screen
-		wireframe only
-		Input: 
-		filename: the full path of the obj file
-		translate: (translateX, translateY) how much the model will be translated during render
-		scale: (scaleX, scaleY) how much the model should be scaled
-		"""
+	def theCoolerLoad(self, filename, translate=(0, 0, 0), scale=(1, 1, 1)):
+	
 		self.obj(filename)
-
 		light = V3(0,0,1)
 
 		for face in self.faces:
 			vcount = len(face)
-
+			# Si es un triangulo
 			if vcount == 3:
 				f1 = face[0][0] - 1
 				f2 = face[1][0] - 1
 				f3 = face[2][0] - 1
 
-				a = self.transform(self.vertices[f1], translate, scale)
-				b = self.transform(self.vertices[f2], translate, scale)
-				c = self.transform(self.vertices[f3], translate, scale)
+				a = self.tranScale(self.vertices[f1], translate, scale)
+				b = self.tranScale(self.vertices[f2], translate, scale)
+				c = self.tranScale(self.vertices[f3], translate, scale)
 
-				normal = vt.normal(vt.cross(vt.sub(b, a), vt.sub(c, a)))
+				crossProd =  vt.cross(vt.sub(b, a),vt.sub(c, a))
+				normal = vt.normal(crossProd)
 				intensity = vt.dot(normal, light)
-				grey = round(255 * intensity)
-				if grey < 0:
+				g = round(255 * intensity)
+				if g < 0:
 					continue  
 			
-				self.triangle(a, b, c, color(grey, grey, grey))
+				self.triangle(a, b, c, color(g, g, g))
 			else:
-				# assuming 4
+				# Si es un cuadrado
 				f1 = face[0][0] - 1
 				f2 = face[1][0] - 1
 				f3 = face[2][0] - 1
 				f4 = face[3][0] - 1   
 
 				vertices = [
-					self.transform(self.vertices[f1], translate, scale),
-					self.transform(self.vertices[f2], translate, scale),
-					self.transform(self.vertices[f3], translate, scale),
-					self.transform(self.vertices[f4], translate, scale)
+					self.tranScale(self.vertices[f1], translate, scale),
+					self.tranScale(self.vertices[f2], translate, scale),
+					self.tranScale(self.vertices[f3], translate, scale),
+					self.tranScale(self.vertices[f4], translate, scale)
 				]
-
-				normal = vt.normal(vt.cross(vt.sub(vertices[0], vertices[1]), vt.sub(vertices[1], vertices[2])))  # no necesitamos dos normales!!
+				
+				subs = vt.sub(vertices[1], vertices[2])
+				crossProd =  vt.cross(vt.sub(vertices[0], vertices[1]), subs)
+				
+				normal = vt.normal(crossProd)  # no necesitamos dos normales!!
 				intensity = vt.dot(normal, light)
 				grey = round(255 * intensity)
 				if grey < 0:
@@ -474,8 +469,8 @@ class renderer():
 	
 				A, B, C, D = vertices 
 				
-				self.triangle(A, B, C, color(grey, grey, grey))
-				self.triangle(A, C, D, color(grey, grey, grey))
+				self.triangle(A, B, C, color(g, g, g))
+				self.triangle(A, C, D, color(g, g, g))
 
 
 	def load(self, filename, translate, scale):
@@ -506,7 +501,7 @@ class renderer():
 		self.frBff = self.glClear() # Pinta el bg de un color
 		self.frBff = self.glClearColor(0, 0, 0) # Modifica color de bg
 		self.glColor(0,0,0)
-		self.load_dennis("objs/Bowl.obj",[25,25,25],[5,5,5])
+		self.theCoolerLoad("objs/Bowl.obj",[25,25,25],[5,5,5])
 
 		"""
 		if polygon == "polygonOne":
